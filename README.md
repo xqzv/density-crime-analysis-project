@@ -29,19 +29,25 @@ This project analyzes how arrest patterns correlate with population density in t
    ```
 
 2. Install dependencies:
+   Using `pip`:
    ```bash
-   pip install -r requirements.txt
+   pip install .
+   ```
+   
+   Using `uv`:
+   ```bash
+   uv sync
    ```
 
 3. (Optional) Install visualization dependencies:
    ```bash
-   pip install -e ".[viz]"
+   pip install ".[viz]"
    ```
 
 ### Running the Project
 
-- **Analysis Notebook**: Open `CW2 Data Visualization.ipynb` to explore the analysis
-- **Interactive Dashboard** (coming soon): `streamlit run app/streamlit_app.py`
+- **Analysis Notebook**: Open `main.ipynb` to explore the analysis
+- **Interactive Dashboard**: `streamlit run app/streamlit_app.py`
 
 ## Data Sources
 
