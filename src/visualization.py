@@ -1,27 +1,69 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
+
 import contextily as ctx
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from scipy.stats import gaussian_kde
-from matplotlib.ticker import MaxNLocator
+
 from datetime import datetime
 
-def plot_crime_by_weekday(nypd_df: pd.DataFrame, lapd_df: pd.DataFrame, ax: plt.Axes, nypd_color: str, lapd_color: str) -> None:
-    """
-    Plot crime frequency by day of week.
-    """
-    def get_weekday(year, month, day):
-        try:
-            return datetime(year, month, day).weekday()
-        except (ValueError, TypeError):
-            return None
+# --- Theme Configuration ---
+THEME_CONFIG = {
+    'font_family': "Arial, sans-serif",
+    'title_font_size': 18,
+    'axis_title_font_size': 14,
+    'tick_font_size': 12,
+    'margin': dict(l=40, r=40, t=60, b=80),
+    'height': 450,
+    'template': 'plotly_white',
+    'colors': {
+        'NYPD': '#1f77b4',
+        'LAPD': '#ff7f0e',
+        'NYPD_light': '#85c2f0',
+        'LAPD_light': '#ffc681'
+    }
+}
 
-    # Helper to process dataframe
+def apply_chart_theme(fig: go.Figure, title: str, xaxis_title: str = None, yaxis_title: str = None) -> go.Figure:
+    """Apply consistent theme to Plotly figures."""
+    fig.update_layout(
+        title={
+            'text': title,
+            'y': 0.95,
+            'x': 0.5,
+            'xanchor': 'center',
+            'yanchor': 'top',
+            'font': {'size': THEME_CONFIG['title_font_size']}
+        },
+        font=dict(family=THEME_CONFIG['font_family']),
+        template=THEME_CONFIG['template'],
+        margin=THEME_CONFIG['margin'],
+        height=THEME_CONFIG['height'],
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.2,
+            xanchor="center",
+            x=0.5
+        )
+    )
+    
+    if xaxis_title:
+        fig.update_xaxes(title_text=xaxis_title, title_font=dict(size=THEME_CONFIG['axis_title_font_size']))
+    if yaxis_title:
+        fig.update_yaxes(title_text=yaxis_title, title_font=dict(size=THEME_CONFIG['axis_title_font_size']))
+        
+    return fig
+
+def plot_crime_by_weekday(nypd_df: pd.DataFrame, lapd_df: pd.DataFrame, 
+                        nypd_color: str = THEME_CONFIG['colors']['NYPD'], 
+                        lapd_color: str = THEME_CONFIG['colors']['LAPD']) -> go.Figure:
+    """Plot crime frequency by day of week using Plotly."""
+    
     def process_weekdays(df, dept_name):
-        weekdays = []
-        # Process in chunks if needed, but for now simple apply is fine for readability
-        # Optimization: Vectorized approach
         dates = pd.to_datetime(df[['Arrest_Year', 'Arrest_Month', 'Arrest_Day']].rename(
             columns={'Arrest_Year': 'year', 'Arrest_Month': 'month', 'Arrest_Day': 'day'}), errors='coerce')
         weekdays = dates.dt.dayofweek.dropna().astype(int)
@@ -32,220 +74,151 @@ def plot_crime_by_weekday(nypd_df: pd.DataFrame, lapd_df: pd.DataFrame, ax: plt.
         day_names = weekdays.map(days_map)
         counts = day_names.value_counts()
         
-        data = []
         days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-        for day in days_order:
-            data.append({'day_name': day, 'count': counts.get(day, 0), 'department': dept_name})
-            
-        return pd.DataFrame(data)
+        return [counts.get(day, 0) for day in days_order], days_order
 
-    nypd_counts = process_weekdays(nypd_df, 'NYPD')
-    lapd_counts = process_weekdays(lapd_df, 'LAPD')
-    day_counts = pd.concat([nypd_counts, lapd_counts])
+    nypd_counts, days_order = process_weekdays(nypd_df, 'NYPD')
+    lapd_counts, _ = process_weekdays(lapd_df, 'LAPD')
 
-    # Add day index for sorting
-    days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    day_counts['day_index'] = day_counts['day_name'].map({day: i for i, day in enumerate(days_order)})
-    day_counts = day_counts.sort_values('day_index')
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=days_order, y=nypd_counts, name='NYPD', marker_color=nypd_color
+    ))
+    fig.add_trace(go.Bar(
+        x=days_order, y=lapd_counts, name='LAPD', marker_color=lapd_color
+    ))
 
-    sns.barplot(x='day_name', y='count', hue='department', data=day_counts,
-                palette=[nypd_color, lapd_color], ax=ax)
-    ax.set_title('Crime Frequency by Day of Week', pad=15)
-    ax.set_xlabel('Day of Week')
-    ax.set_ylabel('Number of Crimes')
-    ax.tick_params(axis='x', rotation=0)
-    ax.legend(title='Department')
+    fig.update_layout(barmode='group')
+    return apply_chart_theme(fig, 'Crime Frequency by Day of Week', 'Day of Week', 'Number of Crimes')
 
-    for p in ax.patches:
-        height = p.get_height()
-        if height > 0:
-            ax.text(p.get_x() + p.get_width()/2., height + height*0.02,
-                    f'{int(height):,}', ha="center", fontsize=9)
+def plot_crime_by_month(nypd_df: pd.DataFrame, lapd_df: pd.DataFrame,
+                      nypd_color: str = THEME_CONFIG['colors']['NYPD'], 
+                      lapd_color: str = THEME_CONFIG['colors']['LAPD']) -> go.Figure:
+    """Plot crime frequency by month using Plotly."""
+    
+    def get_month_counts(df):
+        counts = df['Arrest_Month'].value_counts().sort_index()
+        # Ensure all months 1-12 exist
+        return counts.reindex(range(1, 13), fill_value=0)
 
-def plot_crime_by_month(nypd_df: pd.DataFrame, lapd_df: pd.DataFrame, ax: plt.Axes, nypd_color: str, lapd_color: str) -> None:
-    """
-    Create a line plot showing crime frequency by month.
-    """
-    try:
-        def get_month_counts(df, dept_name):
-            counts = df['Arrest_Month'].value_counts().reset_index()
-            counts.columns = ['month', 'count']
-            counts['department'] = dept_name
-            counts = counts[counts['month'].between(1, 12)]
-            
-            # Ensure all months present
-            all_months = pd.DataFrame({'month': range(1, 13)})
-            all_months['department'] = dept_name
-            return pd.merge(all_months, counts, on=['month', 'department'], how='left').fillna(0)
+    nypd_counts = get_month_counts(nypd_df)
+    lapd_counts = get_month_counts(lapd_df)
+    
+    month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-        nypd_counts = get_month_counts(nypd_df, 'NYPD')
-        lapd_counts = get_month_counts(lapd_df, 'LAPD')
+    fig = go.Figure()
+    
+    # Add seasonal background shapes
+    shapes = [
+        dict(type="rect", x0=-0.5, x1=1.5, y0=0, y1=1, xref="x", yref="paper", fillcolor="lightblue", opacity=0.1, layer="below", line_width=0),
+        dict(type="rect", x0=10.5, x1=11.5, y0=0, y1=1, xref="x", yref="paper", fillcolor="lightblue", opacity=0.1, layer="below", line_width=0),
+        dict(type="rect", x0=1.5, x1=4.5, y0=0, y1=1, xref="x", yref="paper", fillcolor="lightgreen", opacity=0.1, layer="below", line_width=0),
+        dict(type="rect", x0=4.5, x1=7.5, y0=0, y1=1, xref="x", yref="paper", fillcolor="yellow", opacity=0.1, layer="below", line_width=0),
+        dict(type="rect", x0=7.5, x1=10.5, y0=0, y1=1, xref="x", yref="paper", fillcolor="orange", opacity=0.1, layer="below", line_width=0),
+    ]
+    
+    fig.add_trace(go.Scatter(
+        x=month_names, y=nypd_counts, name='NYPD',
+        mode='lines+markers', line=dict(color=nypd_color, width=3), marker=dict(size=8)
+    ))
+    fig.add_trace(go.Scatter(
+        x=month_names, y=lapd_counts, name='LAPD',
+        mode='lines+markers', line=dict(color=lapd_color, width=3), marker=dict(size=8)
+    ))
 
-        month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-        
-        ax.set_title('Crime Frequency by Month', pad=15)
-        ax.set_xlabel('Month')
-        ax.set_ylabel('Number of Crimes')
-        ax.set_xticks(range(len(month_names)))
-        ax.set_xticklabels(month_names)
-        ax.set_xlim(-0.5, 11.5)
+    fig.update_layout(shapes=shapes)
+    return apply_chart_theme(fig, 'Crime Frequency by Month', 'Month', 'Number of Crimes')
 
-        # Seasonal background
-        ax.axvspan(-0.5, 1.5, alpha=0.1, color='lightblue', label='Winter')
-        ax.axvspan(10.5, 11.5, alpha=0.1, color='lightblue')
-        ax.axvspan(1.5, 4.5, alpha=0.1, color='lightgreen', label='Spring')
-        ax.axvspan(4.5, 7.5, alpha=0.1, color='yellow', label='Summer')
-        ax.axvspan(7.5, 10.5, alpha=0.1, color='orange', label='Fall')
+def plot_crime_by_year(nypd_df: pd.DataFrame, lapd_df: pd.DataFrame,
+                     nypd_color: str = THEME_CONFIG['colors']['NYPD'], 
+                     lapd_color: str = THEME_CONFIG['colors']['LAPD']) -> go.Figure:
+    """Plot crime frequency by year using Plotly."""
+    
+    def get_year_counts(df):
+        return df['Arrest_Year'].value_counts().sort_index()
 
-        for dept, color, data in [('NYPD', nypd_color, nypd_counts), ('LAPD', lapd_color, lapd_counts)]:
-            data = data.sort_values('month')
-            data['month_idx'] = data['month'] - 1
-            ax.plot(data['month_idx'], data['count'], color=color, marker='o',
-                    label=dept, linewidth=2, markersize=8)
-            
-            if not data.empty:
-                peak_idx = data['count'].idxmax()
-                peak_month = data.loc[peak_idx]
-                ax.annotate(f"{dept} Peak\n{int(peak_month['count']):,}",
-                           xy=(peak_month['month_idx'], peak_month['count']),
-                           xytext=(peak_month['month_idx'], peak_month['count'] * 1.05),
-                           ha='center', va='bottom', fontsize=9, color=color,
-                           bbox=dict(facecolor='white', edgecolor=color, alpha=0.7,
-                                    boxstyle='round,pad=0.3'))
+    nypd_counts = get_year_counts(nypd_df)
+    lapd_counts = get_year_counts(lapd_df)
+    
+    years = sorted(list(set(nypd_counts.index) | set(lapd_counts.index)))
 
-        ax.legend(title='Department', loc='upper right')
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=years, y=nypd_counts.reindex(years, fill_value=0),
+        name='NYPD', marker_color=nypd_color
+    ))
+    fig.add_trace(go.Bar(
+        x=years, y=lapd_counts.reindex(years, fill_value=0),
+        name='LAPD', marker_color=lapd_color
+    ))
 
-    except Exception as e:
-        ax.text(0.5, 0.5, f"Error in monthly visualization: {str(e)}",
-               ha='center', va='center', fontsize=10, transform=ax.transAxes,
-               bbox=dict(facecolor='white', edgecolor='red', alpha=0.8))
-
-def plot_crime_by_year(nypd_df: pd.DataFrame, lapd_df: pd.DataFrame, ax: plt.Axes, nypd_color: str, lapd_color: str) -> None:
-    """
-    Create a bar plot showing crime frequency by year.
-    """
-    def get_year_counts(df, dept_name):
-        counts = df['Arrest_Year'].value_counts().reset_index()
-        counts.columns = ['year', 'count']
-        counts['department'] = dept_name
-        return counts
-
-    nypd_counts = get_year_counts(nypd_df, 'NYPD')
-    lapd_counts = get_year_counts(lapd_df, 'LAPD')
-    year_counts = pd.concat([nypd_counts, lapd_counts])
-
-    year_pivot = year_counts.pivot(index='year', columns='department', values='count').fillna(0)
-
-    year_pivot[['NYPD', 'LAPD']].plot(kind='bar', stacked=False, ax=ax,
-                                      color=[nypd_color, lapd_color], width=0.7,
-                                      edgecolor='black', linewidth=0.5)
-
-    # Trend lines
-    for i, dept in enumerate(['NYPD', 'LAPD']):
-        if len(year_pivot) >= 3:
-            x = np.arange(len(year_pivot.index))
-            y = year_pivot[dept].values
+    # Add trend lines (simple linear regression)
+    for name, counts, color in [('NYPD', nypd_counts, 'darkblue'), ('LAPD', lapd_counts, 'darkred')]:
+        if len(counts) > 1:
+            x = counts.index.values
+            y = counts.values
             z = np.polyfit(x, y, 1)
             p = np.poly1d(z)
-            ax.plot(x, p(x), '--', color=['darkblue', 'darkred'][i],
-                    linewidth=1.5, alpha=0.8)
+            fig.add_trace(go.Scatter(
+                x=x, y=p(x), mode='lines', name=f'{name} Trend',
+                line=dict(color=color, dash='dash', width=2),
+                showlegend=False
+            ))
 
-    ax.set_title('Crime Frequency by Year', pad=15)
-    ax.set_xlabel('Year')
-    ax.set_ylabel('Number of Crimes')
-    ax.legend(title='Department')
+    fig.update_layout(barmode='group')
+    fig.update_xaxes(type='category') # Ensure years are treated as categories
+    return apply_chart_theme(fig, 'Crime Frequency by Year', 'Year', 'Number of Crimes')
 
-    for i, (year, row) in enumerate(year_pivot.iterrows()):
-        for j, dept in enumerate(['NYPD', 'LAPD']):
-            height = row[dept]
-            ax.text(i + (j-0.5)*0.3, height * 1.02,
-                   f'{int(height):,}', ha='center', va='bottom',
-                   fontsize=9, color=['darkblue', 'darkred'][j])
-
-    ax.set_xticklabels([str(year) for year in year_pivot.index], rotation=0)
-
-def plot_crime_by_day_of_month(nypd_df: pd.DataFrame, lapd_df: pd.DataFrame, ax: plt.Axes, nypd_color: str, lapd_color: str) -> None:
-    """
-    Create a plot showing crime frequency by day of month.
-    """
-    if 'Arrest_Day' not in nypd_df.columns or 'Arrest_Day' not in lapd_df.columns:
-        ax.text(0.5, 0.5, "Error: Arrest_Day column not found",
-                ha='center', va='center', fontsize=12, transform=ax.transAxes)
-        return
-
-    try:
-        all_days = pd.Series(range(1, 32))
-
-        def get_day_counts(df, dept_name):
-            counts = df['Arrest_Day'].value_counts().reset_index()
-            counts.columns = ['day', 'count']
-            day_counts = pd.DataFrame({'day': all_days})
-            day_counts = day_counts.merge(counts, on='day', how='left').fillna(0)
-            day_counts['department'] = dept_name
-            day_counts = day_counts.sort_values('day')
-            day_counts['rolling_avg'] = day_counts['count'].rolling(window=3, center=True).mean()
-            return day_counts
-
-        nypd_day_counts = get_day_counts(nypd_df, 'NYPD')
-        lapd_day_counts = get_day_counts(lapd_df, 'LAPD')
-
-        ax.scatter(nypd_day_counts['day'], nypd_day_counts['count'],
-                  color=nypd_color, alpha=0.3, s=30, label='NYPD (Daily)')
-        ax.plot(nypd_day_counts['day'], nypd_day_counts['rolling_avg'],
-               color=nypd_color, linewidth=2.5, label='NYPD (3-day avg)')
-
-        ax.scatter(lapd_day_counts['day'], lapd_day_counts['count'],
-                  color=lapd_color, alpha=0.3, s=30, label='LAPD (Daily)')
-        ax.plot(lapd_day_counts['day'], lapd_day_counts['rolling_avg'],
-               color=lapd_color, linewidth=2.5, label='LAPD (3-day avg)')
-
-        for day in [1, 15, 28]:
-            ax.axvline(x=day, color='gray', linestyle='--', alpha=0.5)
-
-        ax.axvspan(1, 10, alpha=0.1, color='green', label='Early Month')
-        ax.axvspan(11, 20, alpha=0.1, color='blue', label='Mid Month')
-        ax.axvspan(21, 31, alpha=0.1, color='red', label='Late Month')
-
-        ax.set_title('Crime Frequency by Day of Month', pad=15)
-        ax.set_xlabel('Day of Month')
-        ax.set_ylabel('Number of Crimes')
-        ax.set_xlim(0.5, 31.5)
-        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-
-        handles, labels = ax.get_legend_handles_labels()
-        if len(handles) >= 3:
-            # Filter to show only lines in legend, not scatter points if desired, or just show all
-            # Simplified for robustness:
-            ax.legend(title='Department', loc='upper right')
-
-    except Exception as e:
-        ax.text(0.5, 0.5, f"Error processing day of month data: {str(e)}",
-                ha='center', va='center', fontsize=10, transform=ax.transAxes,
-                bbox=dict(facecolor='white', edgecolor='red', alpha=0.8))
-
-def create_temporal_analysis_plot(nypd_df: pd.DataFrame, lapd_df: pd.DataFrame) -> plt.Figure:
-    """
-    Create and return the figure for temporal analysis visualizations.
-    """
-    sns.set_style("whitegrid")
-    plt.rcParams['font.family'] = 'sans-serif'
+def plot_crime_by_day_of_month(nypd_df: pd.DataFrame, lapd_df: pd.DataFrame,
+                             nypd_color: str = THEME_CONFIG['colors']['NYPD'], 
+                             lapd_color: str = THEME_CONFIG['colors']['LAPD']) -> go.Figure:
+    """Plot crime frequency by day of month using Plotly."""
     
-    nypd_color = '#1f77b4'
-    lapd_color = '#ff7f0e'
+    def get_day_counts(df):
+        counts = df['Arrest_Day'].value_counts().sort_index()
+        full_counts = counts.reindex(range(1, 32), fill_value=0)
+        rolling = full_counts.rolling(window=3, center=True).mean()
+        return full_counts, rolling
 
-    fig, axes = plt.subplots(2, 2, figsize=(20, 16))
-    axes = axes.flatten()
+    nypd_counts, nypd_rolling = get_day_counts(nypd_df)
+    lapd_counts, lapd_rolling = get_day_counts(lapd_df)
+    
+    days = list(range(1, 32))
 
-    fig.suptitle('Temporal Analysis of Crime Patterns: NYPD vs. LAPD', fontsize=18, y=0.98)
+    fig = go.Figure()
+    
+    # Scatter points for daily counts
+    fig.add_trace(go.Scatter(
+        x=days, y=nypd_counts, mode='markers', name='NYPD (Daily)',
+        marker=dict(color=nypd_color, opacity=0.3, size=6), showlegend=False
+    ))
+    fig.add_trace(go.Scatter(
+        x=days, y=lapd_counts, mode='markers', name='LAPD (Daily)',
+        marker=dict(color=lapd_color, opacity=0.3, size=6), showlegend=False
+    ))
+    
+    # Lines for rolling average
+    fig.add_trace(go.Scatter(
+        x=days, y=nypd_rolling, mode='lines', name='NYPD (3-day avg)',
+        line=dict(color=nypd_color, width=3)
+    ))
+    fig.add_trace(go.Scatter(
+        x=days, y=lapd_rolling, mode='lines', name='LAPD (3-day avg)',
+        line=dict(color=lapd_color, width=3)
+    ))
 
-    plot_crime_by_weekday(nypd_df, lapd_df, axes[0], nypd_color, lapd_color)
-    plot_crime_by_month(nypd_df, lapd_df, axes[1], nypd_color, lapd_color)
-    plot_crime_by_year(nypd_df, lapd_df, axes[2], nypd_color, lapd_color)
-    plot_crime_by_day_of_month(nypd_df, lapd_df, axes[3], nypd_color, lapd_color)
+    # Background regions
+    shapes = [
+        dict(type="rect", x0=1, x1=10, y0=0, y1=1, xref="x", yref="paper", fillcolor="green", opacity=0.1, layer="below", line_width=0),
+        dict(type="rect", x0=11, x1=20, y0=0, y1=1, xref="x", yref="paper", fillcolor="blue", opacity=0.1, layer="below", line_width=0),
+        dict(type="rect", x0=21, x1=31, y0=0, y1=1, xref="x", yref="paper", fillcolor="red", opacity=0.1, layer="below", line_width=0),
+    ]
+    
+    fig.update_layout(shapes=shapes)
+    return apply_chart_theme(fig, 'Crime Frequency by Day of Month', 'Day of Month', 'Number of Crimes')
 
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    return fig
+
 
 # City configurations for map visualizations
 CITY_CONFIGS = {
@@ -439,138 +412,146 @@ def create_crime_density_comparison(nypd_df: pd.DataFrame, lapd_df: pd.DataFrame
     fig.suptitle("Crime Density Comparison: NYC vs. LA", fontsize=16)
     return fig
 
-def create_demographic_dashboard(df1: pd.DataFrame, df2: pd.DataFrame, 
-                               df1_name: str = "NYPD", df2_name: str = "LAPD") -> plt.Figure:
-    """
-    Creates a comprehensive demographic comparison dashboard.
-    """
-    # Use a dark style for this specific plot if desired, or stick to whitegrid
-    # The original code used dark_background, but let's stick to the current style or use a context manager
-    with plt.style.context('seaborn-v0_8-dark'): # Using a built-in style that is dark-ish or just custom
-        
-        # Define colors
-        NYPD_color = '#5e9cd3'
-        LAPD_color = '#f49c3b'
-        
-        fig, axes = plt.subplots(2, 2, figsize=(16, 12), facecolor='#1e1e1e')
-        fig.patch.set_facecolor('#1e1e1e')
 
-        axes = axes.flatten()
 
-        for ax in axes:
-            ax.set_facecolor('#1e1e1e')
-            ax.grid(True, color='#333333', linestyle='-', linewidth=0.5, alpha=0.7)
-            ax.spines['bottom'].set_color('#333333')
-            ax.spines['top'].set_color('#333333')
-            ax.spines['right'].set_color('#333333')
-            ax.spines['left'].set_color('#333333')
-            ax.tick_params(colors='#cccccc')
+def plot_race_distribution(df1: pd.DataFrame, df2: pd.DataFrame, 
+                         df1_name: str = "NYPD", df2_name: str = "LAPD",
+                         color1: str = THEME_CONFIG['colors']['NYPD'], 
+                         color2: str = THEME_CONFIG['colors']['LAPD']) -> go.Figure:
+    """Plot race distribution comparison using Plotly."""
+    race_categories = ['Black', 'Hispanic', 'White', 'Asian/Pacific Islander',
+                      'Other', 'Native American', 'Unknown']
+    
+    race_pct1 = (df1['Race_Std'].value_counts() / len(df1)) * 100
+    race_pct2 = (df2['Race_Std'].value_counts() / len(df2)) * 100
+    
+    race_pct1 = race_pct1.reindex(race_categories, fill_value=0)
+    race_pct2 = race_pct2.reindex(race_categories, fill_value=0)
+    
+    # Sort by total percentage for better visualization
+    total_pct = race_pct1 + race_pct2
+    sorted_cats = total_pct.sort_values(ascending=True).index.tolist()
+    
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        y=sorted_cats,
+        x=race_pct1[sorted_cats],
+        name=df1_name,
+        orientation='h',
+        marker_color=color1
+    ))
+    fig.add_trace(go.Bar(
+        y=sorted_cats,
+        x=race_pct2[sorted_cats],
+        name=df2_name,
+        orientation='h',
+        marker_color=color2
+    ))
+    
+    fig.update_layout(barmode='group')
+    return apply_chart_theme(fig, "Race Distribution", "Percentage (%)")
 
-        # 1. Race Distribution
-        ax_race = axes[0]
-        race_categories = ['Black', 'Hispanic', 'White', 'Asian/Pacific Islander',
-                          'Other', 'Native American', 'Unknown']
-        
-        race_pct1 = (df1['Race_Std'].value_counts() / len(df1)) * 100
-        race_pct2 = (df2['Race_Std'].value_counts() / len(df2)) * 100
-        
-        race_pct1 = race_pct1.reindex(race_categories, fill_value=0)
-        race_pct2 = race_pct2.reindex(race_categories, fill_value=0)
-        
-        sorted_cats = ['Black', 'Hispanic', 'White', 'Asian/Pacific Islander',
-                      'Other', 'Unknown', 'Native American']
-        
-        race_df = pd.DataFrame({
-            df1_name: race_pct1.reindex(sorted_cats),
-            df2_name: race_pct2.reindex(sorted_cats)
-        })
-        
-        race_df.plot(kind='barh', ax=ax_race, color=[NYPD_color, LAPD_color])
-        
-        ax_race.set_title("Race Distribution", fontsize=14, color='white')
-        ax_race.set_xlabel("Percentage (%)", fontsize=12, color='white')
-        ax_race.legend(title="Department", title_fontsize=12)
-        
-        leg = ax_race.get_legend()
-        for text in leg.get_texts():
-            text.set_color('white')
-        leg.get_title().set_color('white')
+def plot_gender_distribution(df1: pd.DataFrame, df2: pd.DataFrame,
+                           df1_name: str = "NYPD", df2_name: str = "LAPD",
+                           color1: str = THEME_CONFIG['colors']['NYPD'], 
+                           color2: str = THEME_CONFIG['colors']['LAPD']) -> go.Figure:
+    """Plot gender distribution comparison using Plotly."""
+    gender_pct1 = (df1['Gender_Std'].value_counts() / len(df1)) * 100
+    gender_pct2 = (df2['Gender_Std'].value_counts() / len(df2)) * 100
+    
+    # Prepare data
+    labels = ['Male', 'Female']
+    values1 = [gender_pct1.get('Male', 0), gender_pct1.get('Female', 0)]
+    values2 = [gender_pct2.get('Male', 0), gender_pct2.get('Female', 0)]
+    
+    # Lighter shades for female
+    color1_light = THEME_CONFIG['colors']['NYPD_light']
+    color2_light = THEME_CONFIG['colors']['LAPD_light']
+    
+    fig = make_subplots(rows=1, cols=2, specs=[[{'type':'domain'}, {'type':'domain'}]],
+                       subplot_titles=[df1_name, df2_name])
+    
+    fig.add_trace(go.Pie(
+        labels=labels, values=values1, name=df1_name,
+        marker_colors=[color1, color1_light],
+        hole=.6, hoverinfo="label+percent+name"
+    ), 1, 1)
+    
+    fig.add_trace(go.Pie(
+        labels=labels, values=values2, name=df2_name,
+        marker_colors=[color2, color2_light],
+        hole=.6, hoverinfo="label+percent+name"
+    ), 1, 2)
+    
+    # Apply theme manually since subplots are tricky with generic update_layout
+    fig = apply_chart_theme(fig, "Gender Distribution")
+    # Adjust legend for pie charts specifically if needed, but theme default is okay
+    return fig
 
-        # 2. Gender Distribution
-        ax_gender = axes[1]
-        gender_pct1 = (df1['Gender_Std'].value_counts() / len(df1)) * 100
-        gender_pct2 = (df2['Gender_Std'].value_counts() / len(df2)) * 100
-        
-        male1 = gender_pct1.get('Male', 0)
-        female1 = gender_pct1.get('Female', 0)
-        male2 = gender_pct2.get('Male', 0)
-        female2 = gender_pct2.get('Female', 0)
-        
-        ax_gender.pie([male2, female2], radius=0.7, wedgeprops=dict(width=0.3, edgecolor='#1e1e1e'),
-                     startangle=90, colors=[LAPD_color, '#ffc681'])
-        ax_gender.pie([male1, female1], radius=1.0, wedgeprops=dict(width=0.3, edgecolor='#1e1e1e'),
-                     startangle=90, colors=[NYPD_color, '#85c2f0'])
-                     
-        ax_gender.text(1.2, 0.15, f"{df1_name} - Male: {male1:.1f}%", ha='left', va='center', fontsize=11, color=NYPD_color)
-        ax_gender.text(1.2, 0.0, f"{df1_name} - Female: {female1:.1f}%", ha='left', va='center', fontsize=11, color='#85c2f0')
-        ax_gender.text(1.2, -0.15, f"{df2_name} - Male: {male2:.1f}%", ha='left', va='center', fontsize=11, color=LAPD_color)
-        ax_gender.text(1.2, -0.3, f"{df2_name} - Female: {female2:.1f}%", ha='left', va='center', fontsize=11, color='#ffc681')
-        
-        ax_gender.set_title("Gender Distribution", fontsize=14, color='white')
-        ax_gender.axis('equal')
+def plot_age_distribution(df1: pd.DataFrame, df2: pd.DataFrame,
+                        df1_name: str = "NYPD", df2_name: str = "LAPD",
+                        color1: str = THEME_CONFIG['colors']['NYPD'], 
+                        color2: str = THEME_CONFIG['colors']['LAPD']) -> go.Figure:
+    """Plot age distribution comparison using Plotly."""
+    age_categories = ['<18', '18-24', '25-44', '45-64', '65+']
+    
+    age_pct1 = (df1['Age_Category_Std'].value_counts() / len(df1)) * 100
+    age_pct2 = (df2['Age_Category_Std'].value_counts() / len(df2)) * 100
+    
+    age_pct1 = age_pct1.reindex(age_categories, fill_value=0)
+    age_pct2 = age_pct2.reindex(age_categories, fill_value=0)
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=age_categories, y=age_pct1,
+        mode='lines+markers',
+        name=df1_name,
+        line=dict(color=color1, width=3),
+        marker=dict(size=8)
+    ))
+    fig.add_trace(go.Scatter(
+        x=age_categories, y=age_pct2,
+        mode='lines+markers',
+        name=df2_name,
+        line=dict(color=color2, width=3),
+        marker=dict(size=8)
+    ))
+    
+    return apply_chart_theme(fig, "Age Distribution", "Age Group", "Percentage (%)")
 
-        # 3. Age Distribution
-        ax_age = axes[2]
-        age_categories = ['<18', '18-24', '25-44', '45-64', '65+']
-        
-        age_pct1 = (df1['Age_Category_Std'].value_counts() / len(df1)) * 100
-        age_pct2 = (df2['Age_Category_Std'].value_counts() / len(df2)) * 100
-        
-        age_pct1 = age_pct1.reindex(age_categories, fill_value=0)
-        age_pct2 = age_pct2.reindex(age_categories, fill_value=0)
-        
-        age_df = pd.DataFrame({df1_name: age_pct1, df2_name: age_pct2})
-        age_df.plot(kind='line', marker='o', markersize=8, linewidth=2, ax=ax_age, color=[NYPD_color, LAPD_color])
-        
-        ax_age.set_title("Age Distribution", fontsize=14, color='white')
-        ax_age.set_xlabel("Age Group", fontsize=12, color='white')
-        ax_age.set_ylabel("Percentage (%)", fontsize=12, color='white')
-        
-        leg = ax_age.legend(title="Department", title_fontsize=12)
-        for text in leg.get_texts():
-            text.set_color('white')
-        leg.get_title().set_color('white')
-
-        # 4. Offense Type Distribution
-        ax_offense = axes[3]
-        offense_categories = ['Violent Crime', 'Property Crime', 'Drug Offense',
-                            'Weapon Offense', 'Traffic Violation', 'Other']
-                            
-        offense_pct1 = (df1['Offense_Std'].value_counts() / len(df1)) * 100
-        offense_pct2 = (df2['Offense_Std'].value_counts() / len(df2)) * 100
-        
-        offense_pct1 = offense_pct1.reindex(offense_categories, fill_value=0)
-        offense_pct2 = offense_pct2.reindex(offense_categories, fill_value=0)
-        
-        offense_diff = abs(offense_pct1 - offense_pct2)
-        sorted_offense = offense_diff.sort_values(ascending=False).index
-        
-        offense_df = pd.DataFrame({
-            df1_name: offense_pct1.reindex(sorted_offense),
-            df2_name: offense_pct2.reindex(sorted_offense)
-        })
-        
-        offense_df.plot(kind='barh', ax=ax_offense, color=[NYPD_color, LAPD_color])
-        
-        ax_offense.set_title("Offense Type Distribution", fontsize=14, color='white')
-        ax_offense.set_xlabel("Percentage (%)", fontsize=12, color='white')
-        
-        leg = ax_offense.legend(title="Department", title_fontsize=12)
-        for text in leg.get_texts():
-            text.set_color('white')
-        leg.get_title().set_color('white')
-
-        fig.suptitle("Crime Demographic Analysis:\nNYPD vs LAPD", fontsize=18, color='white', y=0.98)
-        plt.tight_layout(rect=[0, 0, 1, 0.96])
-        
-        return fig
+def plot_offense_distribution(df1: pd.DataFrame, df2: pd.DataFrame,
+                            df1_name: str = "NYPD", df2_name: str = "LAPD",
+                            color1: str = THEME_CONFIG['colors']['NYPD'], 
+                            color2: str = THEME_CONFIG['colors']['LAPD']) -> go.Figure:
+    """Plot offense type distribution comparison using Plotly."""
+    offense_categories = ['Violent Crime', 'Property Crime', 'Drug Offense',
+                        'Weapon Offense', 'Traffic Violation', 'Other']
+                        
+    offense_pct1 = (df1['Offense_Std'].value_counts() / len(df1)) * 100
+    offense_pct2 = (df2['Offense_Std'].value_counts() / len(df2)) * 100
+    
+    offense_pct1 = offense_pct1.reindex(offense_categories, fill_value=0)
+    offense_pct2 = offense_pct2.reindex(offense_categories, fill_value=0)
+    
+    # Sort by difference to highlight contrasts
+    offense_diff = abs(offense_pct1 - offense_pct2)
+    sorted_offense = offense_diff.sort_values(ascending=True).index.tolist()
+    
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        y=sorted_offense,
+        x=offense_pct1[sorted_offense],
+        name=df1_name,
+        orientation='h',
+        marker_color=color1
+    ))
+    fig.add_trace(go.Bar(
+        y=sorted_offense,
+        x=offense_pct2[sorted_offense],
+        name=df2_name,
+        orientation='h',
+        marker_color=color2
+    ))
+    
+    fig.update_layout(barmode='group')
+    return apply_chart_theme(fig, "Offense Type Distribution", "Percentage (%)")

@@ -1,10 +1,10 @@
 import streamlit as st
 import sys
 import os
-import matplotlib.pyplot as plt
+
 
 # Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.io import load_data
 from src.standardize import rename_nypd_columns, rename_lapd_columns, clean_nypd_data, clean_lapd_data
@@ -22,8 +22,12 @@ from src.visualization import (
     plot_crime_by_weekday,
     plot_crime_by_day_of_month,
     create_crime_density_comparison,
-    create_demographic_dashboard
+    plot_race_distribution,
+    plot_gender_distribution,
+    plot_age_distribution,
+    plot_offense_distribution
 )
+
 
 st.set_page_config(page_title="Density Crime Analysis", layout="wide")
 
@@ -140,29 +144,25 @@ else:
         
         with col1:
             st.markdown("#### Yearly Trend")
-            fig_year, ax_year = plt.subplots(figsize=(10, 6))
-            plot_crime_by_year(nypd_filtered, lapd_filtered, ax_year, '#1f77b4', '#ff7f0e')
-            st.pyplot(fig_year)
+            fig_year = plot_crime_by_year(nypd_filtered, lapd_filtered)
+            st.plotly_chart(fig_year, use_container_width=True)
             
         with col2:
             st.markdown("#### Monthly Seasonality")
-            fig_month, ax_month = plt.subplots(figsize=(10, 6))
-            plot_crime_by_month(nypd_filtered, lapd_filtered, ax_month, '#1f77b4', '#ff7f0e')
-            st.pyplot(fig_month)
+            fig_month = plot_crime_by_month(nypd_filtered, lapd_filtered)
+            st.plotly_chart(fig_month, use_container_width=True)
 
         col3, col4 = st.columns(2)
 
         with col3:
             st.markdown("#### Day of Week")
-            fig_week, ax_week = plt.subplots(figsize=(10, 6))
-            plot_crime_by_weekday(nypd_filtered, lapd_filtered, ax_week, '#1f77b4', '#ff7f0e')
-            st.pyplot(fig_week)
+            fig_week = plot_crime_by_weekday(nypd_filtered, lapd_filtered)
+            st.plotly_chart(fig_week, use_container_width=True)
 
         with col4:
             st.markdown("#### Day of Month")
-            fig_dom, ax_dom = plt.subplots(figsize=(10, 6))
-            plot_crime_by_day_of_month(nypd_filtered, lapd_filtered, ax_dom, '#1f77b4', '#ff7f0e')
-            st.pyplot(fig_dom)
+            fig_dom = plot_crime_by_day_of_month(nypd_filtered, lapd_filtered)
+            st.plotly_chart(fig_dom, use_container_width=True)
 
     with tab2:
         st.subheader("Geospatial Analysis")
@@ -179,9 +179,29 @@ else:
         st.subheader("Demographic Analysis")
         st.markdown("Comparison of arrest demographics (Race, Gender, Age, Offense).")
         
-        with st.spinner("Generating demographic dashboard..."):
-            fig_demo = create_demographic_dashboard(nypd_filtered, lapd_filtered)
-            st.pyplot(fig_demo)
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("#### Race Distribution")
+            fig_race = plot_race_distribution(nypd_filtered, lapd_filtered)
+            st.plotly_chart(fig_race, use_container_width=True)
+            
+        with col2:
+            st.markdown("#### Gender Distribution")
+            fig_gender = plot_gender_distribution(nypd_filtered, lapd_filtered)
+            st.plotly_chart(fig_gender, use_container_width=True)
+
+        col3, col4 = st.columns(2)
+
+        with col3:
+            st.markdown("#### Age Distribution")
+            fig_age = plot_age_distribution(nypd_filtered, lapd_filtered)
+            st.plotly_chart(fig_age, use_container_width=True)
+
+        with col4:
+            st.markdown("#### Offense Type Distribution")
+            fig_offense = plot_offense_distribution(nypd_filtered, lapd_filtered)
+            st.plotly_chart(fig_offense, use_container_width=True)
 
     with tab4:
         st.subheader("Data Preview")
