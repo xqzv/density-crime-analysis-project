@@ -2,117 +2,139 @@
 ___
 # Density Crime Analysis
 
+![Python Version](https://img.shields.io/badge/python-3.13%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Status](https://img.shields.io/badge/status-active-success)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://density-crime-analysis-project.streamlit.app/)
+
 Comparative analysis of NYPD and LAPD arrest patterns (2010–2019), exploring relationships between population density and crime arrest rates across New York City and Los Angeles.
 
-## Overview
+## 📖 Overview
 
 This project analyzes how arrest patterns correlate with population density in two major U.S. cities. It demonstrates data engineering, exploratory data analysis, and interactive visualization skills through a reproducible, modular codebase and interactive Streamlit dashboard.
 
-## Features
+**Key Research Topics:**
+*   **Temporal Patterns**: Cyclical variations in criminal activity based on time of day, day of week, month, or year.
+*   **Crime Hotspots**: Geographic areas with disproportionately high concentrations of criminal activity.
+*   **Enforcement Density**: The concentration of police resources relative to population and geography.
 
-- **Data Processing**: Standardized and aligned arrest data from NYPD and LAPD
-- **Analysis**: Comparative statistics and density-crime correlation analysis
-- **Visualization**: Interactive Plotly charts and Folium maps for geographic exploration
-- **Interactive Demo**: Streamlit-powered dashboard for year-range filtering and data exploration
+## ✨ Features
 
-## Getting Started
+- **Data Standardization**: Unified schema for NYPD and LAPD data, standardizing age, gender, race, and offense categories.
+- **Interactive Dashboard**: Streamlit-powered application for exploring data with year-range filtering and demographic breakdowns.
+- **Advanced Visualization**: Interactive Plotly charts for temporal analysis and Folium maps for geographic exploration.
+- **Reproducible Pipeline**: Modular code structure with clear separation of concerns (IO, processing, visualization).
+
+## 📂 Repository Structure
+
+```text
+density-crime-analysis/
+├── app/
+│   └── streamlit_app.py       # Interactive Streamlit dashboard
+├── data/
+│   ├── lapd_aligned.csv       # Processed LAPD data
+│   ├── nypd_aligned.csv       # Processed NYPD data
+│   ├── sample_lapd.csv        # Sample LAPD data for testing
+│   └── sample_nypd.csv        # Sample NYPD data for testing
+├── docs/
+│   └── Project-Plan.md        # Development roadmap and documentation
+├── notebooks/
+│   └── report.ipynb           # Narrative analysis notebook
+├── scripts/
+│   └── create_samples.py      # Utility script to create data samples
+├── src/
+│   ├── data_processing.py     # Data alignment and transformation logic
+│   ├── io.py                  # Data loading and saving utilities
+│   ├── standardize.py         # Column mapping and cleaning functions
+│   └── visualization.py       # Plotting and visualization functions
+├── tests/
+│   └── test_processing.py     # Unit tests for data processing
+├── main.ipynb                 # Main analysis notebook
+├── pyproject.toml             # Project configuration and dependencies
+└── README.md                  # Project documentation
+```
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
 - Python 3.13+
-- Dependencies listed in `requirements.txt`
+- [uv](https://github.com/astral-sh/uv) (recommended) or pip
 
 ### Installation
 
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd density-crime-analysis
-   ```
+1.  **Clone the repository:**
+    ```bash
+    git clone <repository-url>
+    cd density-crime-analysis
+    ```
 
-2. Install dependencies:
-   Using `pip`:
-   ```bash
-   pip install .
-   ```
-   
-   Using `uv`:
-   ```bash
-   uv sync
-   ```
+2.  **Install dependencies:**
 
-3. (Optional) Install visualization dependencies:
-   ```bash
-   pip install ".[viz]"
-   ```
+    Using `uv` (Recommended):
+    ```bash
+    uv sync
+    ```
 
-### Running the Project
+    Using `pip`:
+    ```bash
+    pip install .
+    ```
 
-- **Analysis Notebook**: Open `main.ipynb` to explore the analysis
-- **Interactive Dashboard**: `streamlit run app/streamlit_app.py`
+    To install visualization dependencies:
+    ```bash
+    pip install ".[viz]"
+    ```
 
-## Data Sources
+## 📊 Usage
 
-The original raw datasets can be accessed at:
+### Interactive Dashboard
+Access the live application here: [**Density Crime Analysis Dashboard**](https://density-crime-analysis-project.streamlit.app/)
 
-1. [NYPD Arrests Data (Historic)](https://data.cityofnewyork.us/Public-Safety/NYPD-Arrests-Data-Historic-/8h9b-rp9u/about_data)
-2. [LAPD Arrest Data (2010-2019)](https://data.lacity.org/Public-Safety/Arrest-Data-from-2010-to-2019/yru6-6re4/about_data)
-
-Processed and aligned datasets are included in the `data/` directory:
-- `nypd_aligned.csv` — NYPD arrest records (standardized format)
-- `lapd_aligned.csv` — LAPD arrest records (standardized format)
-
-## Project Structure
-
-```
-.
-├── README.md                    # This file
-├── pyproject.toml              # Project metadata and dependencies
-├── main.py                      # Entry point
-├── CW2 Data Visualization.ipynb # Main analysis notebook
-├── data/
-│   ├── nypd_aligned.csv        # NYPD arrests data
-│   └── lapd_aligned.csv        # LAPD arrests data
-├── docs/
-│   └── Project-Plan.txt        # Development roadmap
-└── src/                        # (In development)
-    ├── io.py                   # Data loading/saving utilities
-    ├── standardize.py          # Column mapping & cleaning
-    ├── data_processing.py      # Alignment & computation
-    └── visualization.py        # Plot functions
+Or launch it locally to explore the data:
+```bash
+streamlit run app/streamlit_app.py
 ```
 
-## Technologies
+### Analysis Notebook
+Open `main.ipynb` or `notebooks/report.ipynb` in VS Code or Jupyter Lab to view the detailed analysis and code.
 
-- **Data Processing**: pandas, numpy
-- **Visualization**: Plotly, Folium, Matplotlib, Seaborn
-- **Web App**: Streamlit
-- **Testing**: pytest
-- **Environment**: Python 3.13+
+### Running Tests
+Execute the test suite to ensure data processing logic is correct:
+```bash
+pytest
+```
 
-## Ethics & Transparency
+## 💾 Data Sources
+
+The analysis is based on publicly available arrest records:
+
+1.  **NYPD Arrests Data (Historic)**: [NYC Open Data](https://data.cityofnewyork.us/Public-Safety/NYPD-Arrests-Data-Historic-/8h9b-rp9u/about_data)
+2.  **LAPD Arrest Data (2010-2019)**: [Los Angeles Open Data](https://data.lacity.org/Public-Safety/Arrest-Data-from-2010-to-2019/yru6-6re4/about_data)
+
+*Note: The `data/` directory contains aligned and standardized versions of these datasets.*
+
+## 🛠️ Methodology
+
+To enable direct comparison, the raw data undergoes a rigorous standardization process:
+*   **Age**: Mapped to standard groups (<18, 18-24, 25-44, 45-64, 65+).
+*   **Gender**: Standardized to Male, Female, Unknown.
+*   **Race/Ethnicity**: Mapped to common categories (Black, White, Hispanic, Asian/Pacific Islander, etc.).
+*   **Offenses**: Categorized into broad groups (Felony, Misdemeanor, Violation).
+
+## ⚖️ Ethics & Transparency
 
 This project analyzes publicly available law enforcement data. Analysis focuses on *arrest patterns* and should not be interpreted as causal claims about crime or demographic factors. Arrest data reflects enforcement decisions, not actual crime rates, and carries inherent biases in policing practices.
 
 **Key Caveats**:
-- Arrest data does not represent crime victimization
-- Disparities in arrests may reflect policing allocation, not underlying criminal activity
-- Use this analysis for informed discussion, not punitive policy decisions
+- Arrest data does not represent crime victimization.
+- Disparities in arrests may reflect policing allocation, not underlying criminal activity.
 
-## Development Roadmap
+## 🤝 Contributing
 
-See `docs/Project-Plan.txt` for the full development plan, including:
-- Phase 1: Reproducibility & sample data
-- Phase 2: Modular refactoring and testing
-- Phase 3: Clean report notebook
-- Phase 4: Interactive Streamlit dashboard
-- Phase 5: CI/CD and polish
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License. See `LICENSE` for details.
-
-## Questions or Feedback?
-
-For issues, suggestions, or collaboration inquiries, please open an issue or contact the project maintainers.
+This project is licensed under the MIT License. See the `LICENSE` file for details.
 
