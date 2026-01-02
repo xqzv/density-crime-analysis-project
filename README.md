@@ -7,7 +7,7 @@
 
 Comparative analysis of NYPD and LAPD arrest patterns (2010–2019), exploring relationships between population density and crime arrest rates across New York City and Los Angeles.
 
-## 📖 Overview
+## Overview
 
 Urban density and policing strategies are inextricably linked, yet comparing distinct metropolitan models like New York and Los Angeles is difficult due to fragmented data standards.
 
@@ -17,14 +17,14 @@ Urban density and policing strategies are inextricably linked, yet comparing dis
 *   **Identify Bias**: Visualize demographic disparities and enforcement patterns across different geographies.
 *   **Optimize Policy**: Distinguish between seasonal crime spikes and systemic enforcement trends to inform resource allocation.
 
-## ✨ Platform Capabilities
+## Platform Capabilities
 
 - **Unified Data Schema**: Harmonizes disparate NYPD and LAPD datasets into a single analytical model, standardizing age, gender, race, and offense taxonomies.
 - **Interactive Intelligence**: Streamlit-powered dashboard enabling real-time exploration of multi-year trends with granular demographic filtering.
 - **Geospatial & Temporal Analysis**: Advanced visualization suite (Plotly/Folium) for identifying localized hotspots and cyclical enforcement patterns.
 - **Reproducible Pipeline**: Modular, production-ready architecture designed for extensibility and transparent data lineage.
 
-## 📂 Repository Structure
+## Repository Structure
 
 ```text
 geospatial-data-analysis/
@@ -53,7 +53,7 @@ geospatial-data-analysis/
 └── README.md                  # Project documentation
 ```
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -85,7 +85,7 @@ geospatial-data-analysis/
     pip install ".[viz]"
     ```
 
-## 📊 Usage
+## Usage
 
 ### Interactive Dashboard
 Access the live application here: [**Geospatial Data Analysis Dashboard**](https://geospatial-data-analysis.streamlit.app/)
@@ -104,7 +104,7 @@ Execute the test suite to ensure data processing logic is correct:
 pytest
 ```
 
-## 💾 Data Sources
+## Data Sources
 
 The analysis is based on publicly available arrest records:
 
@@ -113,7 +113,7 @@ The analysis is based on publicly available arrest records:
 
 *Note: The `data/` directory contains aligned and standardized versions of these datasets.*
 
-## 🛠️ Methodology
+## Methodology
 
 To enable direct comparison, the raw data undergoes a rigorous standardization process:
 *   **Age**: Mapped to standard groups (<18, 18-24, 25-44, 45-64, 65+).
@@ -121,7 +121,7 @@ To enable direct comparison, the raw data undergoes a rigorous standardization p
 *   **Race/Ethnicity**: Mapped to common categories (Black, White, Hispanic, Asian/Pacific Islander, etc.).
 *   **Offenses**: Categorized into broad groups (Felony, Misdemeanor, Violation).
 
-## ⚖️ Ethics & Transparency
+## Ethics & Transparency
 
 This project analyzes publicly available law enforcement data. Analysis focuses on *arrest patterns* and should not be interpreted as causal claims about crime or demographic factors. Arrest data reflects enforcement decisions, not actual crime rates, and carries inherent biases in policing practices.
 
@@ -129,7 +129,7 @@ This project analyzes publicly available law enforcement data. Analysis focuses 
 - Arrest data does not represent crime victimization.
 - Disparities in arrests may reflect policing allocation, not underlying criminal activity.
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
